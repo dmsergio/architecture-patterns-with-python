@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from datetime import date
-from typing import Optional, Set
+from typing import List, Optional, Set
+
+
+class OutOfStock(Exception): ...
 
 
 @dataclass(frozen=True)
@@ -64,3 +67,13 @@ class Batch:
 
     def can_allocate(self, line: Orderline) -> bool:
         return line.sku == self.sku and self.available_quantity >= line.qty
+
+
+# domain service function
+def allocate(line: Orderline, batches: List[Batch]) -> str:
+    try:
+        batch = next(b for b in sorted(batches) if b.can_allocate(line))
+        batch.allocate(line)
+        return batch.reference
+    except StopIteration:
+        raise OutOfStock(f"Out of stock for sku {line.sku}")
