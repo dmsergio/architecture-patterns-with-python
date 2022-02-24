@@ -9,12 +9,21 @@ tomorrow = today + timedelta(days=1)
 later = tomorrow + timedelta(days=10)
 
 
+class OutOfStock(Exception): ...
+
+
 # domain service function
 def allocate(line: Orderline, batches: List[Batch]) -> str:
-    batch = next(batch for batch in sorted(batches)
-                 if batch.can_allocate(line))
-    batch.allocate(line)
-    return batch.reference
+    batch, res = None, None
+    try:
+        batch = next(batch for batch in sorted(batches)
+                     if batch.can_allocate(line))
+    except StopIteration:
+        raise OutOfStock(f"Out of stock for sku {line.sku}")
+    if batch is not None:
+        batch.allocate(line)
+        res = batch.reference
+    return res
 
 
 def make_batch_and_line(sku, batch_qty, line_qty):
@@ -89,5 +98,9 @@ def test_returns_allocated_batch_ref():
     assert allocated_batch_ref == "earliest batch"
 
 
-def test_prefers_warehouse_batches_to_shipments():
-    pytest.fail("todo")
+def test_raises_out_of_stock_exception_if_cannot_allocate():
+    batch = Batch("batch", "SKU-0101", 100)
+    allocate(Orderline("order 01", "SKU-0101", 80), [batch])
+
+    with pytest.raises(OutOfStock, match="SKU-0101"):
+        allocate(Orderline("order 02", "SKU-0101", 50), [batch])
