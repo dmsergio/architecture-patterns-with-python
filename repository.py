@@ -3,6 +3,9 @@ import abc
 from model import Batch
 
 
+#############################
+#           PORT            #
+#############################
 class AbstractRepository(abc.ABC):
 
     @abc.abstractmethod
@@ -14,6 +17,9 @@ class AbstractRepository(abc.ABC):
         raise NotImplementedError
 
 
+#############################
+#         ADAPTERS          #
+#############################
 class SQLAlchemyRepository(AbstractRepository):
 
     def __init__(self, session):
@@ -27,3 +33,18 @@ class SQLAlchemyRepository(AbstractRepository):
 
     def list(self):
         return self.session.query(Batch).all()
+
+
+class FakeRepository(AbstractRepository):
+
+    def __init__(self, batches: set[Batch]):
+        self._batches = set(batches)
+
+    def add(self, batch: Batch):
+        self._batches.add(batch)
+
+    def get(self, reference: str) -> Batch:
+        return next(b for b in self._batches if b.reference == reference)
+
+    def list(self):
+        return list(self._batches)
