@@ -10,7 +10,7 @@ def test_repository_can_save_a_batch(session):
 
     expected = [("The batch", "SKU-0101", 100)]
     rows = list(
-        session.execute("SELECT ref, sku, _purchased_qty FROM batches"))
+        session.execute("SELECT reference, sku, _purchased_qty FROM batches"))
     assert rows == expected
 
 
@@ -28,7 +28,7 @@ def insert_order_line(session):
 
 def insert_batch(session, batch_id):
     session.execute(
-        "INSERT INTO batches (reference, sku, _purchased_quantity, eta) "
+        "INSERT INTO batches (reference, sku, _purchased_qty, eta) "
         "VALUES (:batch_id, 'GENERIC-SOFA', 100, null)",
         dict(batch_id=batch_id),
     )
