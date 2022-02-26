@@ -12,12 +12,12 @@ def allocate(line: Orderline, batches: List[Batch]) -> str:
     try:
         batch = next(b for b in sorted(batches) if b.can_allocate(line))
         batch.allocate(line)
-        return batch.reference
+        return batch.ref
     except StopIteration:
         raise OutOfStock(f"Out of stock for sku {line.sku}")
 
 
-@dataclass(frozen=True)
+@dataclass(unsafe_hash=True)
 class Orderline:
     orderid: str
     sku: str
@@ -36,14 +36,14 @@ class Batch:
             qty: int,
             eta: Optional[date]=None,
     ):
-        self.reference = ref
+        self.ref = ref
         self.sku = sku
         self.eta = eta
         self._purchased_qty = qty
         self._allocations = set()  # type: Set[Orderline]
 
     def __repr__(self):
-        return f"<({self.__class__.__name__}): {self.reference}>"
+        return f"<({self.__class__.__name__}): {self.ref}>"
 
     def __gt__(self, other):
         if self.eta is None:
@@ -55,10 +55,10 @@ class Batch:
     def __eq__(self, other):
         if not isinstance(other, Batch):
             return False
-        return other.reference == self.reference
+        return other.ref == self.ref
 
     def __hash__(self):
-        return hash(self.reference)
+        return hash(self.ref)
 
     def allocate(self, line: Orderline):
         if self.can_allocate(line):

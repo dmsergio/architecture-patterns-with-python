@@ -10,7 +10,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import mapper, relationship
 
 
-from model import Batch, Orderline
+from allocation.domain.model import Batch, Orderline
 
 
 metadata = MetaData()
