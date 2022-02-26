@@ -1,3 +1,7 @@
+# compiled Python files
+__pycache__
+*.pyc
+
 *.idea
 *.pytest_cache
 *.venv
