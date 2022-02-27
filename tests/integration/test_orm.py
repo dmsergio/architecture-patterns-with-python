@@ -1,4 +1,4 @@
-from model import Orderline
+from allocation.domain.model import Orderline
 
 
 def test_orderline_mapper_can_load_lines(session):

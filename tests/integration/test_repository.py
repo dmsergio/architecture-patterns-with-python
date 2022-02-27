@@ -1,5 +1,5 @@
-from model import Batch, Orderline
-from repository import SQLAlchemyRepository
+from allocation.adapters.repository import SQLAlchemyRepository
+from allocation.domain.model import Batch, Orderline
 
 
 def test_repository_can_save_a_batch(session):
@@ -10,7 +10,7 @@ def test_repository_can_save_a_batch(session):
 
     expected = [("The batch", "SKU-0101", 100)]
     rows = list(
-        session.execute("SELECT reference, sku, _purchased_qty FROM batches"))
+        session.execute("SELECT ref, sku, _purchased_qty FROM batches"))
     assert rows == expected
 
 
@@ -28,13 +28,13 @@ def insert_order_line(session):
 
 def insert_batch(session, batch_id):
     session.execute(
-        "INSERT INTO batches (reference, sku, _purchased_qty, eta) "
+        "INSERT INTO batches (ref, sku, _purchased_qty, eta) "
         "VALUES (:batch_id, 'GENERIC-SOFA', 100, null)",
         dict(batch_id=batch_id),
     )
     [[batch_id]] = session.execute(
-        "SELECT id FROM batches"
-        "WHERE reference=:batch_id AND sku='GENERIC-SOFA'",
+        "SELECT id FROM batches "
+        "WHERE ref=:batch_id AND sku='GENERIC-SOFA'",
         dict(batch_id=batch_id),
     )
     return batch_id
