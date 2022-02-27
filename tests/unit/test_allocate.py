@@ -8,16 +8,6 @@ tomorrow = today + timedelta(days=1)
 later = tomorrow + timedelta(days=10)
 
 
-def test_prefers_current_stock_batches_to_shipments():
-    in_stock_batch = Batch("stock batch", "SKU-0101", 50, eta=today)
-    shipment_batch = Batch("shipment batch", "SKU-0101", 100, eta=tomorrow)
-    line = Orderline("order 01", "SKU-0101", 20)
-    allocate(line, [in_stock_batch, shipment_batch])
-
-    assert in_stock_batch.available_quantity == 30
-    assert shipment_batch.available_quantity == 100
-
-
 def test_prefers_earlier_batches():
     earliest = Batch("earliest batch", "SKU-0101", 50, eta=today)
     medium = Batch("medium batch", "SKU-0101", 50, eta=tomorrow)
