@@ -37,7 +37,7 @@ def test_happy_path_returns_201_and_allocated_bath():
     post_to_add_batch(other_batch, other_sku, 100, None)
 
     data = {
-        "order_id": random_element("order"),
+        "orderid": random_element("order"),
         "sku": sku,
         "qty": 5,
     }
@@ -68,7 +68,7 @@ def test_400_message_for_out_of_stock():
     post_to_add_batch(batch, sku, 100, "2022-02-27")
 
     data = {
-        "order_id": random_element("order"),
+        "orderid": random_element("order"),
         "sku": sku,
         "qty": 200,
     }
@@ -85,7 +85,7 @@ def test_400_message_for_invalid_sku():
     random_element("batch", "1")
     sku = random_element("sku")
     data = dict(
-        order_id=random_element("order"),
+        orderid=random_element("order"),
         sku=sku,
         qty=20,
     )
@@ -114,5 +114,57 @@ def test_get_correct_total_of_batches_after_create_one():
 
 @pytest.mark.usefixtures("postgres_db")
 @pytest.mark.usefixtures("restart_api")
-def test_deallocate_order_in_batch():
-    pass
+def test_can_deallocate_exists_order_from_batch():
+    sku = random_element("sku")
+    batch_ref = random_element("batch", "1")
+    order_ref = random_element("order")
+    post_to_add_batch(batch_ref, sku, 200, "2022-02-27")
+
+    # allocate an order
+    data = dict(
+        orderid=order_ref,
+        sku=sku,
+        qty=120,
+    )
+    url = config.get_api_url()
+    response = requests.post(f"{url}/allocate", json=data)
+    assert response.status_code == 201
+
+    # deallocate same order
+    data = dict(
+        orderid=order_ref,
+        batch_ref=batch_ref,
+    )
+    response = requests.post(f"{url}/deallocate", json=data)
+    assert response.status_code == 200
+    assert response.text == "OK"
+
+
+@pytest.mark.usefixtures("postgres_db")
+@pytest.mark.usefixtures("restart_api")
+def test_400_message_to_try_deallocate_unknown_order_from_batch():
+    sku = random_element("sku")
+    batch_ref = random_element("batch", "1")
+    order_ref = random_element("order")
+    post_to_add_batch(batch_ref, sku, 200, "2022-02-27")
+
+    # allocate an order
+    data = dict(
+        orderid=order_ref,
+        sku=sku,
+        qty=120,
+    )
+    url = config.get_api_url()
+    response = requests.post(f"{url}/allocate", json=data)
+    assert response.status_code == 201
+
+    # deallocate unknown order
+    unknown_order_ref = random_element("order")
+    data = dict(
+        orderid=unknown_order_ref,
+        batch_ref=batch_ref,
+    )
+    response = requests.post(f"{url}/deallocate", json=data)
+    assert response.status_code == 400
+    assert (response.json()["message"]
+            == f"Order {unknown_order_ref} not present in batch!")

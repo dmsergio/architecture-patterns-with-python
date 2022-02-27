@@ -40,7 +40,7 @@ def allocate():
     repo = repository.SQLAlchemyRepository(session)
     try:
         batch_ref = services.allocate(
-            request.json["order_id"],
+            request.json["orderid"],
             request.json["sku"],
             request.json["qty"],
             repo,
@@ -49,6 +49,21 @@ def allocate():
     except (model.OutOfStock, services.InvalidSku) as e:
         return {"message": str(e)}, 400
     return {"batch_ref": batch_ref}, 201
+
+@app.route("/deallocate", methods=["POST"])
+def deallocate():
+    session = get_session()
+    repo = repository.SQLAlchemyRepository(session)
+    try:
+        services.deallocate(
+            request.json["orderid"],
+            request.json["batch_ref"],
+            repo,
+            session,
+        )
+    except (services.InvalidBatch, services.InvalidOrderidByBatch) as e:
+        return {"message": str(e)}, 400
+    return "OK", 200
 
 @app.route("/get_batches", methods=["GET"])
 def get_batches():
