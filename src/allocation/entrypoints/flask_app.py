@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
