@@ -6,7 +6,7 @@ from sqlalchemy.exc import NoResultFound
 
 from allocation.domain import model
 from allocation.domain.model import Batch, Orderline
-from allocation.adapters.repository import AbstractRepository
+from allocation.service_layer import unit_of_work
 
 
 class InvalidSku(Exception):
@@ -43,41 +43,38 @@ def add_batch(
         sku: str,
         qty: int,
         eta: Optional[date],
-        repo: AbstractRepository,
-        session,
+        uow: unit_of_work.AbstractUnitOfWork,
 ) -> None:
-    repo.add(model.Batch(ref, sku, qty, eta))
-    session.commit()
+    with uow:
+        uow.batches.add(model.Batch(ref, sku, qty, eta))
 
 
 def allocate(
         orderid: str,
         sku: str,
         qty: int,
-        repo: AbstractRepository,
-        session,
+        uow: unit_of_work.AbstractUnitOfWork,
 ) -> str:
-    batches = repo.list()
-    if not is_valid_sku(sku, batches):
-        raise InvalidSku(f"Invalid sku {sku}!")
     line = Orderline(orderid, sku, qty)
-    batch_ref = model.allocate(line, batches)
-    session.commit()
+    with uow:
+        batches = uow.batches
+        if not is_valid_sku(line.sku, batches):
+            raise InvalidSku(f"Invalid sku {line.sku}!")
+        batch_ref = model.allocate(line, batches)
     return batch_ref
 
 
 def deallocate(
         orderid: str,
         bath_ref: str,
-        repo: AbstractRepository,
-        session,
+        uow: unit_of_work.AbstractUnitOfWork,
 ) -> None:
-    try:
-        batch = repo.get(bath_ref)
-    except NoResultFound:
-        raise InvalidBatch(f"Batch {bath_ref} not found!")
-    if not exists_orderid_in_batch(orderid, batch):
-        raise InvalidOrderidByBatch(f"Order {orderid} not present in batch!")
-    line = get_order_line_by_orderid(orderid, batch)
-    batch.deallocate(line)
-    session.commit()
+    with uow:
+        try:
+            batch = uow.batches.get(bath_ref)
+        except NoResultFound:
+            raise InvalidBatch(f"Batch {bath_ref} not found!")
+        if not exists_orderid_in_batch(orderid, batch):
+            raise InvalidOrderidByBatch(f"Order {orderid} not present in batch!")
+        line = get_order_line_by_orderid(orderid, batch)
+        batch.deallocate(line)
