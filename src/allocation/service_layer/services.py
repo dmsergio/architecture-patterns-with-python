@@ -47,6 +47,7 @@ def add_batch(
 ) -> None:
     with uow:
         uow.batches.add(model.Batch(ref, sku, qty, eta))
+        uow.commit()
 
 
 def allocate(
@@ -57,10 +58,11 @@ def allocate(
 ) -> str:
     line = Orderline(orderid, sku, qty)
     with uow:
-        batches = uow.batches
+        batches = uow.batches.list()
         if not is_valid_sku(line.sku, batches):
             raise InvalidSku(f"Invalid sku {line.sku}!")
         batch_ref = model.allocate(line, batches)
+        uow.commit()
     return batch_ref
 
 
@@ -78,3 +80,4 @@ def deallocate(
             raise InvalidOrderidByBatch(f"Order {orderid} not present in batch!")
         line = get_order_line_by_orderid(orderid, batch)
         batch.deallocate(line)
+        uow.commit()

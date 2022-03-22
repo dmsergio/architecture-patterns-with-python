@@ -11,19 +11,19 @@ TODAY = datetime.today()
 TOMORROW = TODAY + timedelta(days=1)
 
 
-# class FakeRepository(AbstractRepository):
-#
-#     def __init__(self, batches: List[Batch]):
-#         self._batches = set(batches)
-#
-#     def add(self, batch: Batch):
-#         self._batches.add(batch)
-#
-#     def get(self, ref: AnyStr) -> Batch:
-#         return next(b for b in self._batches if b.ref == ref)
-#
-#     def list(self):
-#         return list(self._batches)
+class FakeRepository(AbstractRepository):
+
+    def __init__(self, batches: List[Batch]):
+        self._batches = set(batches)
+
+    def add(self, batch: Batch):
+        self._batches.add(batch)
+
+    def get(self, ref: AnyStr) -> Batch:
+        return next(b for b in self._batches if b.ref == ref)
+
+    def list(self):
+        return list(self._batches)
 
 
 class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
