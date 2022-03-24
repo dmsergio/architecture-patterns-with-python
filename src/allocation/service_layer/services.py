@@ -2,10 +2,7 @@ from __future__ import annotations
 from datetime import date
 from typing import List, Optional
 
-from sqlalchemy.exc import NoResultFound
-
 from allocation.domain import model
-from allocation.domain.model import Batch, Orderline
 from allocation.service_layer import unit_of_work
 
 
@@ -13,28 +10,17 @@ class InvalidSku(Exception):
     pass
 
 
-class InvalidBatch(Exception):
-    pass
-
-
-class InvalidOrderidByBatch(Exception):
-    pass
-
-
-def is_valid_sku(sku, batches):
-    return sku in {b.sku for b in batches}
-
-
 def get_batches(repo) -> List[dict]:
     return [dict(ref=batch.ref, sku=batch.sku, qty=batch._purchased_qty)
-            for batch in repo.list()]
+            for product in repo.list()
+            for batch in product.batches]
 
 
-def exists_orderid_in_batch(orderid: str, batch: Batch) -> bool:
+def exists_orderid_in_batch(orderid: str, batch: model.Batch) -> bool:
     return orderid in {line.orderid for line in batch._allocations}
 
 
-def get_order_line_by_orderid(orderid: str, batch) -> Orderline:
+def get_order_line_by_orderid(orderid: str, batch) -> model.Orderline:
     return next(line for line in batch._allocations if line.orderid == orderid)
 
 
@@ -46,7 +32,11 @@ def add_batch(
         uow: unit_of_work.AbstractUnitOfWork,
 ) -> None:
     with uow:
-        uow.batches.add(model.Batch(ref, sku, qty, eta))
+        product = uow.products.get(sku=sku)
+        if product is None:
+            product = model.Product(sku, batches=[])
+            uow.products.add(product=product)
+        product.batches.append(model.Batch(ref, sku, qty, eta))
         uow.commit()
 
 
@@ -56,28 +46,11 @@ def allocate(
         qty: int,
         uow: unit_of_work.AbstractUnitOfWork,
 ) -> str:
-    line = Orderline(orderid, sku, qty)
+    line = model.Orderline(orderid, sku, qty)
     with uow:
-        batches = uow.batches.list()
-        if not is_valid_sku(line.sku, batches):
-            raise InvalidSku(f"Invalid sku {line.sku}!")
-        batch_ref = model.allocate(line, batches)
+        product = uow.products.get(sku=sku)
+        if product is None:
+            raise InvalidSku(f"Invalid sku {sku}!")
+        batch_ref = product.allocate(line)
         uow.commit()
     return batch_ref
-
-
-def deallocate(
-        orderid: str,
-        bath_ref: str,
-        uow: unit_of_work.AbstractUnitOfWork,
-) -> None:
-    with uow:
-        try:
-            batch = uow.batches.get(bath_ref)
-        except NoResultFound:
-            raise InvalidBatch(f"Batch {bath_ref} not found!")
-        if not exists_orderid_in_batch(orderid, batch):
-            raise InvalidOrderidByBatch(f"Order {orderid} not present in batch!")
-        line = get_order_line_by_orderid(orderid, batch)
-        batch.deallocate(line)
-        uow.commit()
