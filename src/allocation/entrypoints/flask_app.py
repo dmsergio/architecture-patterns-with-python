@@ -44,18 +44,6 @@ def allocate():
         return {"message": str(e)}, 400
     return {"batch_ref": batch_ref}, 201
 
-@app.route("/deallocate", methods=["POST"])
-def deallocate():
-    try:
-        services.deallocate(
-            request.json["orderid"],
-            request.json["batch_ref"],
-            unit_of_work.SqlAlchemyUnitOfWork(),
-        )
-    except (services.InvalidBatch, services.InvalidOrderidByBatch) as e:
-        return {"message": str(e)}, 400
-    return "OK", 200
-
 @app.route("/get_batches", methods=["GET"])
 def get_batches():
     session = get_session()

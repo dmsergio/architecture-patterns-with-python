@@ -22,6 +22,9 @@ class FakeProductRepository(AbstractProductRepository):
     def get(self, sku: AnyStr) -> Product:
         return next((p for p in self._products if p.sku == sku), None)
 
+    def list(self) -> List[Product]:
+        return list(self._products)
+
 
 class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
 

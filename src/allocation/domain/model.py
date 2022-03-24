@@ -7,16 +7,6 @@ from typing import List, Optional, Set
 class OutOfStock(Exception): ...
 
 
-# domain service function
-# def allocate(line: Orderline, batches: List[Batch]) -> str:
-#     try:
-#         batch = next(b for b in sorted(batches) if b.can_allocate(line))
-#         batch.allocate(line)
-#         return batch.ref
-#     except StopIteration:
-#         raise OutOfStock(f"Out of stock for sku {line.sku}")
-
-
 class Product:
 
     def __init__(self, sku: str, batches: List[Batch]):

@@ -17,6 +17,10 @@ class AbstractProductRepository(abc.ABC):
     def get(self, sku: str) -> model.Product:
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def list(self) -> List[model.Product]:
+        raise NotImplementedError
+
 
 #############################
 #         ADAPTERS          #
@@ -31,3 +35,6 @@ class SQLAlchemyProductRepository(AbstractProductRepository):
 
     def get(self, sku: str) -> model.Product:
         return self.session.query(model.Product).filter_by(sku=sku).first()
+
+    def list(self) -> List[model.Product]:
+        return self.session.query(model.Product).all()

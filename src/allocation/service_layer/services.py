@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import date
-from typing import Optional
+from typing import List, Optional
 
 from allocation.domain import model
 from allocation.service_layer import unit_of_work
@@ -8,6 +8,12 @@ from allocation.service_layer import unit_of_work
 
 class InvalidSku(Exception):
     pass
+
+
+def get_batches(repo) -> List[dict]:
+    return [dict(ref=batch.ref, sku=batch.sku, qty=batch._purchased_qty)
+            for product in repo.list()
+            for batch in product.batches]
 
 
 def exists_orderid_in_batch(orderid: str, batch: model.Batch) -> bool:
@@ -48,21 +54,3 @@ def allocate(
         batch_ref = product.allocate(line)
         uow.commit()
     return batch_ref
-
-
-# TODO: to use new Product model
-# def deallocate(
-#         orderid: str,
-#         bath_ref: str,
-#         uow: unit_of_work.AbstractUnitOfWork,
-# ) -> None:
-#     with uow:
-#         try:
-#             batch = uow.batches.get(bath_ref)
-#         except NoResultFound:
-#             raise InvalidBatch(f"Batch {bath_ref} not found!")
-#         if not exists_orderid_in_batch(orderid, batch):
-#             raise InvalidOrderidByBatch(f"Order {orderid} not present in batch!")
-#         line = get_order_line_by_orderid(orderid, batch)
-#         batch.deallocate(line)
-#         uow.commit()
