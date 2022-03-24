@@ -34,7 +34,11 @@ class SQLAlchemyProductRepository(AbstractProductRepository):
         self.session.add(product)
 
     def get(self, sku: str) -> model.Product:
-        return self.session.query(model.Product).filter_by(sku=sku).first()
+        return (
+            self.session.query(model.Product)
+                .filter_by(sku=sku)
+                .with_for_update()
+                .first())
 
     def list(self) -> List[model.Product]:
         return self.session.query(model.Product).all()

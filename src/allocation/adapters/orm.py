@@ -27,6 +27,7 @@ products = Table(
     "products",
     metadata,
     Column("sku", String(255), primary_key=True),
+    Column("version_number", Integer, nullable=False, server_default="0"),
 )
 
 batches = Table(

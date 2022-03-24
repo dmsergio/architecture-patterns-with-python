@@ -1,16 +1,8 @@
 import pytest
 import requests
-import uuid
 
 from allocation import config
-
-
-def random_suffix():
-    return uuid.uuid4().hex[:6]
-
-
-def random_element(element, name=""):
-    return f"{element}-{name}-{random_suffix()}"
+from random_refs import *
 
 
 def post_to_add_batch(ref, sku, qty, eta=None):
@@ -82,7 +74,6 @@ def test_400_message_for_out_of_stock():
 @pytest.mark.usefixtures("postgres_db")
 @pytest.mark.usefixtures("restart_api")
 def test_400_message_for_invalid_sku():
-    random_element("batch", "1")
     sku = random_element("sku")
     data = dict(
         orderid=random_element("order"),
