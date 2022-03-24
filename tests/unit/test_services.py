@@ -3,33 +3,30 @@ from typing import AnyStr, List
 
 import pytest
 
-from allocation.adapters.repository import AbstractRepository
-from allocation.domain.model import Batch
+from allocation.adapters.repository import AbstractProductRepository
+from allocation.domain.model import Product
 from allocation.service_layer import services, unit_of_work
 
 TODAY = datetime.today()
 TOMORROW = TODAY + timedelta(days=1)
 
 
-class FakeRepository(AbstractRepository):
+class FakeProductRepository(AbstractProductRepository):
 
-    def __init__(self, batches: List[Batch]):
-        self._batches = set(batches)
+    def __init__(self, products: List):
+        self._products = set(products)
 
-    def add(self, batch: Batch):
-        self._batches.add(batch)
+    def add(self, product: Product):
+        self._products.add(product)
 
-    def get(self, ref: AnyStr) -> Batch:
-        return next(b for b in self._batches if b.ref == ref)
-
-    def list(self):
-        return list(self._batches)
+    def get(self, sku: AnyStr) -> Product:
+        return next((p for p in self._products if p.sku == sku), None)
 
 
 class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
 
     def __init__(self):
-        self.batches = FakeRepository([])
+        self.products = FakeProductRepository([])
         self.committed = False
 
     def commit(self):
@@ -46,11 +43,18 @@ class FakeSession:
         self.committed = True
 
 
-def test_add_batch():
+def test_add_batch_for_new_product():
     uow = FakeUnitOfWork()
     services.add_batch("b-001", "sku-0101", 100, TODAY, uow)
-    assert uow.batches.get("b-001") is not None
+    assert uow.products.get("sku-0101") is not None
     assert uow.committed
+
+
+def test_add_batch_for_existing_product():
+    uow = FakeUnitOfWork()
+    services.add_batch("b-001", "sku-0001", 100, TODAY, uow)
+    services.add_batch("b-002", "sku-0001", 100, TODAY, uow)
+    assert "b-002" in {b.ref for b in uow.products.get("sku-0001").batches}
 
 
 def test_allocate_returns_allocation():

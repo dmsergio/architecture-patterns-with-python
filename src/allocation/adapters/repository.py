@@ -1,40 +1,33 @@
 import abc
 from typing import List
 
-from allocation.domain.model import Batch
+from allocation.domain import model
 
 
 #############################
 #           PORT            #
 #############################
-class AbstractRepository(abc.ABC):
+class AbstractProductRepository(abc.ABC):
 
     @abc.abstractmethod
-    def add(self, batch: Batch):
+    def add(self, product: model.Product):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get(self, ref: str) -> Batch:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def list(self) -> list:
+    def get(self, sku: str) -> model.Product:
         raise NotImplementedError
 
 
 #############################
 #         ADAPTERS          #
 #############################
-class SQLAlchemyRepository(AbstractRepository):
+class SQLAlchemyProductRepository(AbstractProductRepository):
 
     def __init__(self, session):
         self.session = session
 
-    def add(self, batch: Batch):
-        self.session.add(batch)
+    def add(self, product: model.Product):
+        self.session.add(product)
 
-    def get(self, ref: str) -> Batch:
-        return self.session.query(Batch).filter_by(ref=ref).one()
-
-    def list(self) -> List[Batch]:
-        return self.session.query(Batch).all()
+    def get(self, sku: str) -> model.Product:
+        return self.session.query(model.Product).filter_by(sku=sku).first()

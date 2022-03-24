@@ -59,6 +59,6 @@ def deallocate():
 @app.route("/get_batches", methods=["GET"])
 def get_batches():
     session = get_session()
-    repo = repository.SQLAlchemyRepository(session)
+    repo = repository.SQLAlchemyProductRepository(session)
     batches = services.get_batches(repo)
     return {"batches": batches}, 200
