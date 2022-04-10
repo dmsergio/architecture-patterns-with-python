@@ -1,5 +1,5 @@
 import abc
-from typing import List
+from typing import List, Set
 
 from allocation.domain import model
 
@@ -9,16 +9,35 @@ from allocation.domain import model
 #############################
 class AbstractProductRepository(abc.ABC):
 
-    @abc.abstractmethod
+    def __init__(self):
+        self.seen = set()  # type: Set[model.Product]
+
     def add(self, product: model.Product):
-        raise NotImplementedError
+        self._add(product)
+        self.seen.add(product)
 
-    @abc.abstractmethod
     def get(self, sku: str) -> model.Product:
+        product = self._get(sku)
+        if product:
+            self.seen.add(product)
+        return product
+
+    def list(self) -> List[model.Product]:
+        products = self._list()
+        if products:
+            self.seen.update(products)
+        return products
+
+    @abc.abstractmethod
+    def _add(self, product: model.Product):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def list(self) -> List[model.Product]:
+    def _get(self, sku: str) -> model.Product:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _list(self) -> List[model.Product]:
         raise NotImplementedError
 
 
@@ -28,17 +47,19 @@ class AbstractProductRepository(abc.ABC):
 class SQLAlchemyProductRepository(AbstractProductRepository):
 
     def __init__(self, session):
+        super().__init__()
         self.session = session
 
-    def add(self, product: model.Product):
+    def _add(self, product: model.Product):
         self.session.add(product)
 
-    def get(self, sku: str) -> model.Product:
+    def _get(self, sku: str) -> model.Product:
         return (
             self.session.query(model.Product)
                 .filter_by(sku=sku)
                 .with_for_update()
-                .first())
+                .first()
+        )
 
-    def list(self) -> List[model.Product]:
+    def _list(self) -> List[model.Product]:
         return self.session.query(model.Product).all()

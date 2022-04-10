@@ -53,4 +53,4 @@ def allocate(
             raise InvalidSku(f"Invalid sku {sku}!")
         batch_ref = product.allocate(line)
         uow.commit()
-    return batch_ref
+        return batch_ref
