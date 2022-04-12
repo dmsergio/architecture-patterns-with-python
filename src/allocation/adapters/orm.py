@@ -6,6 +6,7 @@ from sqlalchemy import (
     MetaData,
     Table,
     String,
+    event,
 )
 from sqlalchemy.orm import mapper, relationship
 
@@ -66,3 +67,7 @@ def start_mappers():
         products,
         properties={"batches": relationship(batches_mapper)},
     )
+
+@event.listens_for(Product, "load")
+def product_load(product, _):
+    product.events = []

@@ -40,7 +40,7 @@ def allocate():
             request.json["qty"],
             unit_of_work.SqlAlchemyUnitOfWork(),
         )
-    except (model.OutOfStock, services.InvalidSku) as e:
+    except services.InvalidSku as e:
         return {"message": str(e)}, 400
     return {"batch_ref": batch_ref}, 201
 

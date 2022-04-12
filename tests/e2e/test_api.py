@@ -54,7 +54,7 @@ def test_add_batch_returns_201():
 
 @pytest.mark.usefixtures("postgres_db")
 @pytest.mark.usefixtures("restart_api")
-def test_400_message_for_out_of_stock():
+def test_batch_is_none_if_out_of_stock():
     sku = random_element("sku")
     batch = random_element("batch", "1")
     post_to_add_batch(batch, sku, 100, "2022-02-27")
@@ -67,8 +67,8 @@ def test_400_message_for_out_of_stock():
     url = config.get_api_url()
     response = requests.post(f"{url}/allocate", json=data)
 
-    assert response.status_code == 400
-    assert response.json()["message"] == f"Out of stock for sku {sku}"
+    assert response.status_code == 201
+    assert response.json()["batch_ref"] is None
 
 
 @pytest.mark.usefixtures("postgres_db")
