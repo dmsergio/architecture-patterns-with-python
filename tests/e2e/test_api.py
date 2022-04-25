@@ -84,20 +84,3 @@ def test_400_message_for_invalid_sku():
     response = requests.post(f"{url}/allocate", json=data)
     assert response.status_code == 400
     assert response.json()["message"] == f"Invalid sku {sku}!"
-
-
-@pytest.mark.usefixtures("postgres_db")
-@pytest.mark.usefixtures("restart_api")
-def test_get_correct_total_of_batches_after_create_one():
-    url = config.get_api_url()
-    response = requests.get(f"{url}/get_batches")
-    current_batches = len(response.json()["batches"])
-
-    # new batch
-    sku = random_element("sku")
-    batch = random_element("batch", "1")
-    post_to_add_batch(batch, sku, 100)
-
-    response = requests.get(f"{url}/get_batches")
-    total_batches = len(response.json()["batches"])
-    assert total_batches == current_batches + 1
