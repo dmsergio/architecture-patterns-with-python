@@ -152,3 +152,28 @@ class TestChangeBatchQuantity:
         assert batch1.available_quantity == 5
         # and 20 will be reallocated to the next batch
         assert batch2.available_quantity == 30
+
+    # def test_reallocates_if_necessary_isolated(self):
+    #     uow = FakeUnitOfWorkWithFakeMessageBus()
+    #
+    #     # test setup as before
+    #     event_history = [
+    #         events.BatchCreated("b1", "sku-001", 50),
+    #         events.BatchCreated("b2", "sku-001", 50, TODAY),
+    #         events.AllocationRequired("o1", "sku-001", 20),
+    #         events.AllocationRequired("o2", "sku-001", 20),
+    #     ]
+    #     for event in event_history:
+    #         messagebus.handle(event, uow)
+    #     [batch1, batch2] = uow.products.get(sku="sku-001").batches
+    #     assert batch1.available_quantity == 10
+    #     assert batch2.available_quantity == 50
+    #
+    #     messagebus.handle(events.BatchQuantityChanged("b1", 25), uow)
+    #
+    #     # assert on new events emitted rather that downstream side-effects
+    #     # uow.publish_events()
+    #     [reallocation_event] = uow.events_published
+    #     assert isinstance(reallocation_event, events.AllocationRequired)
+    #     assert reallocation_event.orderid in {"o1", "o2"}
+    #     assert reallocation_event.sku == "sku-001"
