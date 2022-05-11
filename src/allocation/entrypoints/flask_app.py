@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from allocation import config
-from allocation.domain import events
+from allocation.domain import commands
 from allocation.adapters import orm
 from allocation.service_layer import handlers, unit_of_work, messagebus
 
@@ -22,7 +22,7 @@ def add_batch():
     eta = request.json["eta"]
     if eta is not None:
         eta = datetime.fromisoformat(eta).date()
-    event = events.BatchCreated(
+    event = commands.CreateBatch(
         request.json["ref"],
         request.json["sku"],
         request.json["qty"],
@@ -34,7 +34,7 @@ def add_batch():
 @app.route("/allocate", methods=["POST"])
 def allocate():
     try:
-        event = events.AllocationRequired(
+        event = commands.Allocate(
             request.json["orderid"],
             request.json["sku"],
             request.json["qty"],

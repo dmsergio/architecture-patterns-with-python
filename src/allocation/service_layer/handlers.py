@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List
 
 from allocation.adapters import email
-from allocation.domain import model, events
+from allocation.domain import model, events, commands
 from allocation.service_layer import unit_of_work
 
 
@@ -25,32 +25,32 @@ def get_order_line_by_orderid(orderid: str, batch) -> model.Orderline:
 
 
 def add_batch(
-        event: events.BatchCreated,
+        cmd: commands.CreateBatch,
         uow: unit_of_work.AbstractUnitOfWork,
 ) -> None:
     with uow:
-        product = uow.products.get(sku=event.sku)
+        product = uow.products.get(sku=cmd.sku)
         if product is None:
-            product = model.Product(event.sku, batches=[])
+            product = model.Product(cmd.sku, batches=[])
             uow.products.add(product=product)
         product.batches.append(model.Batch(
-            event.ref,
-            event.sku,
-            event.qty,
-            event.eta,
+            cmd.ref,
+            cmd.sku,
+            cmd.qty,
+            cmd.eta,
         ))
         uow.commit()
 
 
 def allocate(
-        event: events.AllocationRequired,
+        cmd: commands.Allocate,
         uow: unit_of_work.AbstractUnitOfWork,
 ) -> str:
-    line = model.Orderline(event.orderid, event.sku, event.qty)
+    line = model.Orderline(cmd.orderid, cmd.sku, cmd.qty)
     with uow:
-        product = uow.products.get(sku=event.sku)
+        product = uow.products.get(sku=cmd.sku)
         if product is None:
-            raise InvalidSku(f"Invalid sku {event.sku}!")
+            raise InvalidSku(f"Invalid sku {cmd.sku}!")
         batch_ref = product.allocate(line)
         uow.commit()
         return batch_ref
@@ -67,10 +67,10 @@ def send_out_of_stock_notification(
 
 
 def change_batch_quantity(
-        event: events.BatchQuantityChanged,
+        cmd: commands.ChangeBatchQuantity,
         uow: unit_of_work.AbstractUnitOfWork,
 ):
     with uow:
-        product = uow.products.get_by_batchref(batchref=event.ref)
-        product.change_batch_quantity(ref=event.ref, qty=event.qty)
+        product = uow.products.get_by_batchref(batchref=cmd.ref)
+        product.change_batch_quantity(ref=cmd.ref, qty=cmd.qty)
         uow.commit()

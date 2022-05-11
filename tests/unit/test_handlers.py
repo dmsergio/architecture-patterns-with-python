@@ -3,9 +3,9 @@ from typing import AnyStr, List
 from unittest import mock
 
 import pytest
-from allocation.domain import events
 
 from allocation.adapters.repository import AbstractProductRepository
+from allocation.domain import events, commands
 from allocation.domain.model import Product
 from allocation.service_layer import unit_of_work, messagebus, handlers
 
@@ -69,52 +69,52 @@ class FakeSession:
 class TestAddBatch:
     def test_for_new_product(self):
         uow = FakeUnitOfWork()
-        messagebus.handle(events.BatchCreated("b1", "sku-001", 100, None), uow)
-        assert uow.products.get(sku="sku-001") is not None
+        messagebus.handle(commands.CreateBatch("b1", "sku-1", 100, None), uow)
+        assert uow.products.get(sku="sku-1") is not None
         assert uow.committed
 
     def test_for_existing_product(self):
         uow = FakeUnitOfWork()
-        messagebus.handle(events.BatchCreated("b1", "sku-001", 100, None), uow)
-        messagebus.handle(events.BatchCreated("b2", "sku-001", 99, None), uow)
-        assert "b2" in [b.ref for b in uow.products.get("sku-001").batches]
+        messagebus.handle(commands.CreateBatch("b1", "sku-1", 100, None), uow)
+        messagebus.handle(commands.CreateBatch("b2", "sku-1", 99, None), uow)
+        assert "b2" in [b.ref for b in uow.products.get("sku-1").batches]
 
 
 class TestAllocate:
     def test_returns_allocation(self):
         uow = FakeUnitOfWork()
-        messagebus.handle(events.BatchCreated("b2", "sku-001", 100, None), uow)
+        messagebus.handle(commands.CreateBatch("b2", "sku-1", 100, None), uow)
         results = messagebus.handle(
-            events.AllocationRequired("order-01", "sku-001", 10),
+            commands.Allocate("order-01", "sku-1", 10),
             uow,
         )
         assert results.pop(0) == "b2"
 
     def test_errors_for_invalid_sku(self):
         uow = FakeUnitOfWork()
-        messagebus.handle(events.BatchCreated("b1", "sku-001", 300), uow)
+        messagebus.handle(commands.CreateBatch("b1", "sku-001", 300), uow)
         with pytest.raises(handlers.InvalidSku, match="Invalid sku sku-100!"):
             messagebus.handle(
-                events.AllocationRequired("order-003", "sku-100", 100),
+                commands.Allocate("order-003", "sku-100", 100),
                 uow,
             )
 
     def test_commits(self):
         uow = FakeUnitOfWork()
-        messagebus.handle(events.BatchCreated("b1", "sku-001", 100), uow)
+        messagebus.handle(commands.CreateBatch("b1", "sku-001", 100), uow)
         messagebus.handle(
-            events.AllocationRequired("order01", "sku-001", 10),
+            commands.Allocate("order01", "sku-001", 10),
             uow,
         )
         assert uow.committed
 
     def test_sends_email_on_out_of_stock_error(self):
         uow = FakeUnitOfWork()
-        messagebus.handle(events.BatchCreated("b1", "sku-001", 9, None), uow)
+        messagebus.handle(commands.CreateBatch("b1", "sku-001", 9, None), uow)
 
         with mock.patch("allocation.adapters.email.send") as mock_send_mail:
             messagebus.handle(
-                events.AllocationRequired("o1", "sku-001", 10), uow
+                commands.Allocate("o1", "sku-001", 10), uow
             )
             assert mock_send_mail.call_args == mock.call(
                 "stock@made.com",
@@ -125,20 +125,20 @@ class TestAllocate:
 class TestChangeBatchQuantity:
     def test_changes_available_quantity(self):
         uow = FakeUnitOfWork()
-        messagebus.handle(events.BatchCreated("b1", "sku-001", 100), uow)
+        messagebus.handle(commands.CreateBatch("b1", "sku-001", 100), uow)
         [batch] = uow.products.get(sku="sku-001").batches
         assert batch.available_quantity == 100
 
-        messagebus.handle(events.BatchQuantityChanged("b1", 50), uow)
+        messagebus.handle(commands.ChangeBatchQuantity("b1", 50), uow)
         assert batch.available_quantity == 50
 
     def test_reallocates_if_necessary(self):
         uow = FakeUnitOfWork()
         event_history = [
-            events.BatchCreated("b1", "sku-001", 50),
-            events.BatchCreated("b2", "sku-001", 50, TODAY),
-            events.AllocationRequired("o1", "sku-001", 20),
-            events.AllocationRequired("o2", "sku-001", 20),
+            commands.CreateBatch("b1", "sku-001", 50),
+            commands.CreateBatch("b2", "sku-001", 50, TODAY),
+            commands.Allocate("o1", "sku-001", 20),
+            commands.Allocate("o2", "sku-001", 20),
         ]
         for event in event_history:
             messagebus.handle(event, uow)
@@ -146,7 +146,7 @@ class TestChangeBatchQuantity:
         assert batch1.available_quantity == 10
         assert batch2.available_quantity == 50
 
-        messagebus.handle(events.BatchQuantityChanged("b1", 25), uow)
+        messagebus.handle(commands.ChangeBatchQuantity("b1", 25), uow)
 
         # order1 or order2 will be deallocated, so we'll have 25-20
         assert batch1.available_quantity == 5
