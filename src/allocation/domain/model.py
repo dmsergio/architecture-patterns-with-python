@@ -17,13 +17,19 @@ class Product:
         self.version_number = version_number
         self.events = []  # type: List[Union[events.Event, commands.Command]]
 
-    def allocate(self, line: Orderline):
+    def allocate(self, line: Orderline) -> str:
         try:
             batch = next(
                 b for b in sorted(self.batches) if b.can_allocate(line)
             )
             batch.allocate(line)
             self.version_number += 1
+            self.events.append(events.Allocated(
+                orderid=line.orderid,
+                sku=line.sku,
+                qty=line.qty,
+                batchref=batch.ref,
+            ))
             return batch.ref
         except StopIteration:
             self.events.append(events.OutOfStock(line.sku))

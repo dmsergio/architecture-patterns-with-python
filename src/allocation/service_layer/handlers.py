@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List
 
-from allocation.adapters import email
+from allocation.adapters import email, redis_eventpublisher
 from allocation.domain import model, events, commands
 from allocation.service_layer import unit_of_work
 
@@ -74,3 +74,10 @@ def change_batch_quantity(
         product = uow.products.get_by_batchref(batchref=cmd.ref)
         product.change_batch_quantity(ref=cmd.ref, qty=cmd.qty)
         uow.commit()
+
+
+def publish_allocated_event(
+        event: events.Allocated,
+        uow: unit_of_work.AbstractUnitOfWork,
+):
+    redis_eventpublisher.publish("line_allocated", event)
