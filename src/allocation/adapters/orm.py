@@ -49,6 +49,14 @@ allocations = Table(
     Column("order_line_id", ForeignKey("order_lines.id")),
 )
 
+allocations_view = Table(
+    "allocations_view",
+    metadata,
+    Column("orderid", String(255)),
+    Column("sku", String(255)),
+    Column("batchref", String(255)),
+)
+
 def start_mappers():
     lines_mapper = mapper(Orderline, order_lines)
     batches_mapper = mapper(
@@ -69,5 +77,5 @@ def start_mappers():
     )
 
 @event.listens_for(Product, "load")
-def product_load(product, _):
+def receive_load(product, _):
     product.events = []

@@ -1,11 +1,11 @@
 import logging
 from datetime import datetime
 
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from allocation import config
+from allocation import config, views
 from allocation.domain import commands
 from allocation.adapters import orm
 from allocation.service_layer import handlers, unit_of_work, messagebus
@@ -22,25 +22,32 @@ def add_batch():
     eta = request.json["eta"]
     if eta is not None:
         eta = datetime.fromisoformat(eta).date()
-    event = commands.CreateBatch(
+    cmd = commands.CreateBatch(
         request.json["ref"],
         request.json["sku"],
         request.json["qty"],
         eta
     )
-    messagebus.handle(event, unit_of_work.SqlAlchemyUnitOfWork())
+    messagebus.handle(cmd, unit_of_work.SqlAlchemyUnitOfWork())
     return "OK", 201
 
 @app.route("/allocate", methods=["POST"])
 def allocate():
     try:
-        event = commands.Allocate(
+        cmd = commands.Allocate(
             request.json["orderid"],
             request.json["sku"],
             request.json["qty"],
         )
-        results = messagebus.handle(event, unit_of_work.SqlAlchemyUnitOfWork())
-        batch_ref = results.pop(0)
+        messagebus.handle(cmd, unit_of_work.SqlAlchemyUnitOfWork())
     except handlers.InvalidSku as e:
         return {"message": str(e)}, 400
-    return {"batch_ref": batch_ref}, 201
+    return "OK", 202
+
+@app.route("/allocations/<orderid>", methods=["GET"])
+def allocations_view_endpoint(orderid):
+    uow = unit_of_work.SqlAlchemyUnitOfWork()
+    result = views.allocations(orderid, uow)
+    if not result:
+        return "not found", 404
+    return jsonify(result), 200

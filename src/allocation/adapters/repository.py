@@ -8,7 +8,7 @@ from allocation.domain import model
 #############################
 #           PORT            #
 #############################
-class AbstractProductRepository(abc.ABC):
+class AbstractRepository(abc.ABC):
 
     def __init__(self):
         self.seen = set()  # type: Set[model.Product]
@@ -55,7 +55,7 @@ class AbstractProductRepository(abc.ABC):
 #############################
 #         ADAPTERS          #
 #############################
-class SQLAlchemyProductRepository(AbstractProductRepository):
+class SQLAlchemyRepository(AbstractRepository):
 
     def __init__(self, session):
         super().__init__()
@@ -76,7 +76,7 @@ class SQLAlchemyProductRepository(AbstractProductRepository):
         return (
             self.session.query(model.Product)
             .join(model.Batch)
-            .filter(orm.batches.c.reference == batchref)
+            .filter(orm.batches.c.ref == batchref)
             .first()
         )
 

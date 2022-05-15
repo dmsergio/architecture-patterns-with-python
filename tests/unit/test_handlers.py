@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-from allocation.adapters.repository import AbstractProductRepository
+from allocation.adapters.repository import AbstractRepository
 from allocation.domain import events, commands
 from allocation.domain.model import Product
 from allocation.service_layer import unit_of_work, messagebus, handlers
@@ -13,7 +13,7 @@ TODAY = datetime.today()
 TOMORROW = TODAY + timedelta(days=1)
 
 
-class FakeProductRepository(AbstractProductRepository):
+class FakeRepository(AbstractRepository):
 
     def __init__(self, products: List):
         super().__init__()
@@ -38,7 +38,7 @@ class FakeProductRepository(AbstractProductRepository):
 class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
 
     def __init__(self):
-        self.products = FakeProductRepository([])
+        self.products = FakeRepository([])
         self.committed = False
 
     def _commit(self):
@@ -58,14 +58,6 @@ class FakeUnitOfWorkWithFakeMessageBus(FakeUnitOfWork):
                 self.events_published.append(product.events.pop(0))
 
 
-class FakeSession:
-
-    committed = False
-
-    def commit(self):
-        self.committed = True
-
-
 class TestAddBatch:
     def test_for_new_product(self):
         uow = FakeUnitOfWork()
@@ -80,15 +72,19 @@ class TestAddBatch:
         assert "b2" in [b.ref for b in uow.products.get("sku-1").batches]
 
 
+@pytest.fixture(autouse=True)
+def fake_redis_publish():
+    with mock.patch("allocation.adapters.redis_eventpublisher.publish"):
+        yield
+
+
 class TestAllocate:
-    def test_returns_allocation(self):
+    def test_allocates(self):
         uow = FakeUnitOfWork()
-        messagebus.handle(commands.CreateBatch("b2", "sku-1", 100, None), uow)
-        results = messagebus.handle(
-            commands.Allocate("order-01", "sku-1", 10),
-            uow,
-        )
-        assert results.pop(0) == "b2"
+        messagebus.handle(commands.CreateBatch("b1", "sku1", 100, None), uow)
+        messagebus.handle(commands.Allocate("o1", "sku1", 30), uow)
+        [batch] = uow.products.get(sku="sku1").batches
+        assert batch.available_quantity == 70
 
     def test_errors_for_invalid_sku(self):
         uow = FakeUnitOfWork()
@@ -101,11 +97,8 @@ class TestAllocate:
 
     def test_commits(self):
         uow = FakeUnitOfWork()
-        messagebus.handle(commands.CreateBatch("b1", "sku-001", 100), uow)
-        messagebus.handle(
-            commands.Allocate("order01", "sku-001", 10),
-            uow,
-        )
+        messagebus.handle(commands.CreateBatch("b1", "sku1", 100, None), uow)
+        messagebus.handle(commands.Allocate("o1", "sku1", 10), uow)
         assert uow.committed
 
     def test_sends_email_on_out_of_stock_error(self):
@@ -152,28 +145,3 @@ class TestChangeBatchQuantity:
         assert batch1.available_quantity == 5
         # and 20 will be reallocated to the next batch
         assert batch2.available_quantity == 30
-
-    # def test_reallocates_if_necessary_isolated(self):
-    #     uow = FakeUnitOfWorkWithFakeMessageBus()
-    #
-    #     # test setup as before
-    #     event_history = [
-    #         events.BatchCreated("b1", "sku-001", 50),
-    #         events.BatchCreated("b2", "sku-001", 50, TODAY),
-    #         events.AllocationRequired("o1", "sku-001", 20),
-    #         events.AllocationRequired("o2", "sku-001", 20),
-    #     ]
-    #     for event in event_history:
-    #         messagebus.handle(event, uow)
-    #     [batch1, batch2] = uow.products.get(sku="sku-001").batches
-    #     assert batch1.available_quantity == 10
-    #     assert batch2.available_quantity == 50
-    #
-    #     messagebus.handle(events.BatchQuantityChanged("b1", 25), uow)
-    #
-    #     # assert on new events emitted rather that downstream side-effects
-    #     # uow.publish_events()
-    #     [reallocation_event] = uow.events_published
-    #     assert isinstance(reallocation_event, events.AllocationRequired)
-    #     assert reallocation_event.orderid in {"o1", "o2"}
-    #     assert reallocation_event.sku == "sku-001"
