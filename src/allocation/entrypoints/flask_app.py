@@ -2,20 +2,16 @@ import logging
 from datetime import datetime
 
 from flask import Flask, request, jsonify
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
-from allocation import config, views
+from allocation import bootstrap, views
 from allocation.domain import commands
-from allocation.adapters import orm
-from allocation.service_layer import handlers, unit_of_work, messagebus
+from allocation.service_layer import handlers, unit_of_work
 
 _logger = logging.getLogger(__name__)
 
 
-orm.start_mappers()
-get_session = sessionmaker(bind=create_engine(config.get_postgres_uri()))
 app = Flask(__name__)
+bus = bootstrap.bootstrap()
 
 @app.route("/add_batch", methods=["POST"])
 def add_batch():
@@ -28,7 +24,7 @@ def add_batch():
         request.json["qty"],
         eta
     )
-    messagebus.handle(cmd, unit_of_work.SqlAlchemyUnitOfWork())
+    bus.handle(cmd)
     return "OK", 201
 
 @app.route("/allocate", methods=["POST"])
@@ -39,7 +35,7 @@ def allocate():
             request.json["sku"],
             request.json["qty"],
         )
-        messagebus.handle(cmd, unit_of_work.SqlAlchemyUnitOfWork())
+        bus.handle(cmd)
     except handlers.InvalidSku as e:
         return {"message": str(e)}, 400
     return "OK", 202

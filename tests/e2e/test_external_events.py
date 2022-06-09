@@ -1,7 +1,7 @@
 import json
 import pytest
 
-from tenacity import Retrying, RetryError, stop_after_delay
+from tenacity import Retrying, stop_after_delay
 
 from e2e import api_client, redis_client
 from random_refs import random_element

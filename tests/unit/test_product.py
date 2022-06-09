@@ -1,5 +1,4 @@
 from datetime import date, timedelta
-import pytest
 
 from allocation.domain import model, events
 

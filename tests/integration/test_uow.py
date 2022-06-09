@@ -9,6 +9,8 @@ from allocation.domain import model
 from allocation.service_layer import unit_of_work
 from random_refs import *
 
+pytestmark = pytest.mark.usefixtures("mappers")
+
 
 def insert_batch(session, ref, sku, qty, eta, product_version=1):
     session.execute(
@@ -89,7 +91,8 @@ def test_rolls_back_on_error(sqlite_session_factory):
     assert rows == []
 
 
-def test_concurrent_updates_to_version_are_not_allowed(postgres_session_factory):
+def test_concurrent_updates_to_version_are_not_allowed(
+        postgres_session_factory):
     sku, batch = random_element("sku"), random_element("batch")
     session = postgres_session_factory()
     insert_batch(session, batch, sku, 100, eta=None, product_version=1)
